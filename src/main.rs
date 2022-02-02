@@ -1,6 +1,7 @@
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, exit};
+use std::io::Result;
 
-fn main() {
+fn main() -> Result<()> {
     let output = Command::new("tmux")
         .arg("list-sessions")
         .output()
@@ -15,12 +16,10 @@ fn main() {
     let arg_count = args.len() / 2;
     match arg_count {
         0 => Command::new("tmux")
-            .spawn()
-            .expect("Failed to execute tmux"),
+            .spawn()?,
         1 => Command::new("tmux")
             .arg("a")
-            .spawn()
-            .expect("Failed to execute tmux a"),
+            .spawn()?,
         n => {
             let child = Command::new("dialog")
                 .arg("--menu")
@@ -30,15 +29,13 @@ fn main() {
                 .arg(format!("{}", n)) // menu height
                 .args(&args[0..n * 2]) // arg list for options, drop the last element ("")
                 .stderr(Stdio::piped()) // collect only stderr
-                .spawn()
-                .expect("Failed to execute tmux a");
+                .spawn()?;
 
             let output = child
-                .wait_with_output()
-                .expect("Cannot read output from dialog");
+                .wait_with_output()?;
             
             if !output.status.success() {
-                return;
+                exit(output.status.code().unwrap());
             }
 
             let answer = output.stderr;
@@ -47,10 +44,10 @@ fn main() {
                 .arg("a")
                 .arg("-t")
                 .arg(&choice)
-                .spawn()
-                .expect("Failed to execute tmux a")
+                .spawn()?
         }
     }
     .wait()
-    .unwrap();
+    .expect("Failed to run tmux");
+    Ok(())
 }
